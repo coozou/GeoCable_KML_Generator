@@ -566,6 +566,7 @@ let allNames = [];
 let displayNames = [];
 let selectedNames = new Set();
 let lineNames = new Set();
+let lineOssNames = new Set();
 let repNames = new Set();
 let eqNames = new Set();
 
@@ -580,7 +581,7 @@ function renderList() {
   displayNames.forEach(name => {
     const div = document.createElement('div');
     div.className = 'sys-item' + (selectedNames.has(name) ? ' selected' : '');
-    const c1 = lineNames.has(name) ? '─' : ' ';
+    const c1 = (lineNames.has(name) || lineOssNames.has(name)) ? '─' : ' ';
     const c2 = repNames.has(name)  ? '◎' : ' ';
     const c3 = eqNames.has(name)   ? '◇' : ' ';
     const icons = `<span style="display:inline-block;width:1.1em;text-align:center">${c1}</span><span style="display:inline-block;width:1.1em;text-align:center">${c2}</span><span style="display:inline-block;width:1.1em;text-align:center">${c3}</span>`;
@@ -653,6 +654,7 @@ async function loadXML() {
   allNames = [];
   selectedNames.clear();
   lineNames.clear();
+  lineOssNames.clear();
   repNames.clear();
   eqNames.clear();
 
@@ -682,7 +684,8 @@ async function loadXML() {
     records.forEach(rec => {
       const name = rec.querySelector('SystemName')?.textContent?.trim() || '（名称なし）';
       if (!allNames.includes(name)) allNames.push(name);
-      if (kind === 'fibre' || kind === 'fibre-oss') lineNames.add(name);
+      if (kind === 'fibre') lineNames.add(name);
+      if (kind === 'fibre-oss') lineOssNames.add(name);
       if (kind === 'rep') repNames.add(name);
       if (kind === 'eq') eqNames.add(name);
     });
@@ -691,7 +694,7 @@ async function loadXML() {
   }
 
   allNames.sort();
-  log(`ライン: ${lineNames.size}システム  ライン(OSS): 0システム  ポイント: ${repNames.size+eqNames.size}システム`);
+  log(`ライン: ${lineNames.size}システム  ライン(OSS): ${lineOssNames.size}システム  ポイント: ${repNames.size+eqNames.size}システム`);
   log(`SystemName: ${allNames.length}件`);
   log('読み込み完了');
   hideProgress('load');
