@@ -289,7 +289,7 @@
   }
   .sys-item:hover { background: #e8f4f8; }
   .sys-item.selected { background: #c5dfe8; }
-  .sys-icons { width: 3em; flex-shrink: 0; font-size: 0.75rem; letter-spacing: 0.05em; }
+  .sys-icons { width: 3.5em; flex-shrink: 0; font-size: 0.82rem; letter-spacing: 0.1em; font-family: monospace; }
 
   .sel-controls {
     display: flex;
@@ -518,7 +518,7 @@
       <button class="btn btn-sm btn-danger" onclick="clearSelection()">選択解除</button>
       <span class="sel-count" id="sel-count"></span>
     </div>
-    <div class="legend">ー Cable  ◎ Repeater  ◇ Equaliser</div>
+    <div class="legend">─ Cable  ◎ Repeater  ◇ Equaliser</div>
 
     <div class="sys-list" id="sys-list" style="margin-top:6px"></div>
 
@@ -580,9 +580,10 @@ function renderList() {
   displayNames.forEach(name => {
     const div = document.createElement('div');
     div.className = 'sys-item' + (selectedNames.has(name) ? ' selected' : '');
-    const icons = (lineNames.has(name) ? 'ー' : '　')
-                + (repNames.has(name)  ? '◎' : '　')
-                + (eqNames.has(name)   ? '◇' : '　');
+    const c1 = lineNames.has(name) ? '─' : ' ';
+    const c2 = repNames.has(name)  ? '◎' : ' ';
+    const c3 = eqNames.has(name)   ? '◇' : ' ';
+    const icons = `<span style="display:inline-block;width:1.1em;text-align:center">${c1}</span><span style="display:inline-block;width:1.1em;text-align:center">${c2}</span><span style="display:inline-block;width:1.1em;text-align:center">${c3}</span>`;
     div.innerHTML = `<span class="sys-icons">${icons}</span><span>${name}</span>`;
     div.onclick = (e) => {
       if (e.shiftKey && lastClicked !== null) {
