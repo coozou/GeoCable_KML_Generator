@@ -682,7 +682,7 @@ async function loadXML() {
     log(`[${kindLabel}] ${file.name} → ${records.length}件`);
 
     records.forEach(rec => {
-      const name = rec.querySelector('SystemName')?.textContent?.trim() || '（名称なし）';
+      const name = rec.querySelector('SystemName')?.textContent?.trimStart() || '（名称なし）';
       if (!allNames.includes(name)) allNames.push(name);
       if (kind === 'fibre') lineNames.add(name);
       if (kind === 'fibre-oss') lineOssNames.add(name);
