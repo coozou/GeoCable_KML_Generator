@@ -70,7 +70,7 @@
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
   }
 
   /* ===== SECTION HEADERS ===== */
@@ -106,9 +106,8 @@
     font-size: 0.78rem;
     color: var(--subtext);
     min-height: 26px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
   .file-display.has-file { color: var(--text); }
   .btn-browse {
@@ -271,14 +270,13 @@
     font-size: 0.85rem;
   }
   .sys-list {
-    flex: 1;
     background: white;
     border: 1px solid var(--border);
     border-radius: 4px;
     overflow-y: auto;
     font-size: 0.82rem;
     font-family: 'Courier New', monospace;
-    min-height: 200px;
+    height: 45vh;
   }
   .sys-item {
     padding: 3px 8px;
@@ -311,7 +309,7 @@
     font-family: 'Courier New', monospace;
     font-size: 0.75rem;
     overflow-y: auto;
-    height: 160px;
+    height: 25vh;
     margin-top: 8px;
     white-space: pre-wrap;
     word-break: break-all;
@@ -391,7 +389,7 @@
   <!-- ===== 左ペイン ===== -->
   <div class="left-pane">
 
-    <div class="section-header">━ XMLファイル選択</div>
+    <div class="section-header">━ XMLファイル選択 ━</div>
 
     <div class="file-row">
       <span class="file-label">Cable</span>
@@ -431,7 +429,7 @@
       <div class="progress-text" id="prog-load-text"></div>
     </div>
 
-    <div class="section-header">━ スタイル設定</div>
+    <div class="section-header">━ スタイル設定 ━</div>
     <table class="style-table">
       <tr>
         <th style="width:90px;text-align:left"></th>
@@ -479,14 +477,14 @@
       </tr>
     </table>
 
-    <div class="section-header">━ 出力設定</div>
+    <div class="section-header">━ 出力設定 ━</div>
     <div class="output-row">
       <span class="output-label">KMLファイル名</span>
       <input type="text" class="output-input" id="out-name" placeholder="GeoCable_KML_Generator_Web">
     </div>
     <div class="output-note">（拡張子不要）</div>
 
-    <div class="section-header">━ KMLファイルのフォルダ構造</div>
+    <div class="section-header">━ KMLファイルのフォルダ構造 ━</div>
     <div class="radio-group">
       <label><input type="radio" name="folder" value="lp" checked> Cable/Repeater/Equaliserで分類する</label>
       <label><input type="radio" name="folder" value="sys"> Systemですべてまとめる</label>
@@ -506,7 +504,7 @@
   <!-- ===== 右ペイン ===== -->
   <div class="right-pane">
     <div class="right-header">
-      <div class="section-header" style="margin:0">━ System Name一覧</div>
+      <div class="section-header" style="margin:0">━ System Name一覧 ━</div>
     </div>
 
     <div class="search-row">
@@ -524,7 +522,7 @@
 
     <div class="sys-list" id="sys-list" style="margin-top:6px"></div>
 
-    <div class="section-header" style="margin-top:10px">━ ログ</div>
+    <div class="section-header" style="margin-top:10px">━ ログ ━</div>
     <div class="log-area" id="log-area"></div>
   </div>
 </div>
