@@ -670,39 +670,182 @@ async function loadXML() {
     return;
   }
 
+  // XMLテキストを読み込む
+  const xmlTexts = {fibre:[], 'fibre-oss':[], rep:[], eq:[]};
+  const fileCounts = {fibre:{}, 'fibre-oss':{}, rep:{}, eq:{}};
   showProgress('load', 0, allFiles.length);
-
   for (let i = 0; i < allFiles.length; i++) {
     const {file, kind} = allFiles[i];
     const text = await file.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/xml');
-    const records = doc.querySelectorAll(':root > *');
+    const count = doc.querySelectorAll(':root > *').length;
     const kindLabel = {fibre:'Fibre','fibre-oss':'Fibre(OSS)',rep:'Repeater',eq:'Equaliser'}[kind]||kind;
-    log(`[${kindLabel}] ${file.name} → ${records.length}件`);
-
-    records.forEach(rec => {
-      const name = rec.querySelector('SystemName')?.textContent?.trim() || '（名称なし）';
-      if (!allNames.includes(name)) allNames.push(name);
-      if (kind === 'fibre') lineNames.add(name);
-      if (kind === 'fibre-oss') lineOssNames.add(name);
-      if (kind === 'rep') repNames.add(name);
-      if (kind === 'eq') eqNames.add(name);
-    });
-
+    log(`[${kindLabel}] ${file.name} → ${count}件`);
+    xmlTexts[kind].push(text);
     showProgress('load', i + 1, allFiles.length);
   }
 
-  allNames.sort();
-  const subtotal = lineNames.size + lineOssNames.size + repNames.size + eqNames.size;
-  const duplicates = subtotal - allNames.length;
+  // Pyodideでバイナリ解析してSystemNameを確定
+  log('バイナリ解析中...');
+  pyodide.globals.set('xml_texts_json', JSON.stringify(xmlTexts));
+
+  const result = await pyodide.runPythonAsync(`
+import base64, struct, math, xml.etree.ElementTree as ET, json
+from collections import OrderedDict
+
+xml_texts = json.loads(xml_texts_json)
+
+_a=6378137.0; _e2=0.00669437999014; _e=math.sqrt(_e2)
+_k=0.839504511565919; _lat0r=math.radians(33.0); _lon0=80.0
+def _psi(phi):
+    return math.log(math.tan(math.pi/4+phi/2)*((1-_e*math.sin(phi))/(1+_e*math.sin(phi)))**(_e/2))
+_psi0=_psi(_lat0r)
+def proj_to_latlon(x,y):
+    lon=math.degrees(x/(_a*_k))+_lon0
+    psi_t=y/(_a*_k)+_psi0
+    phi=2*math.atan(math.exp(psi_t))-math.pi/2
+    for _ in range(20):
+        phi_new=2*math.atan(math.exp(psi_t)*((1+_e*math.sin(phi))/(1-_e*math.sin(phi)))**(_e/2))-math.pi/2
+        if abs(phi_new-phi)<1e-12: break
+        phi=phi_new
+    if lon>180: lon-=360
+    elif lon<-180: lon+=360
+    return math.degrees(phi_new),lon
+
+def parse_single_geom(decoded,start):
+    vals=[]
+    for i in range(start+28,len(decoded)-7,8):
+        vals.append(struct.unpack('<d',decoded[i:i+8])[0])
+    x0=struct.unpack('<d',decoded[start+20:start+28])[0]
+    rx,ry=[],[]
+    i=0
+    while i+2<len(vals):
+        yv,z,xv=vals[i],vals[i+1],vals[i+2]
+        if z==0.0 and abs(yv)<10000000 and abs(xv)<10000000 and yv!=0 and xv!=0:
+            ry.append(yv); rx.append(xv)
+        i+=3
+    coords=[]
+    for j in range(len(ry)):
+        x=x0 if j==0 else rx[j-1]
+        try:
+            lat,lon=proj_to_latlon(x,ry[j])
+            if -90<lat<90 and -180<lon<180: coords.append((lon,lat))
+        except: pass
+    return coords
+
+def decode_line(b64):
+    try:
+        b64c=b64.replace(' ','').replace('\n','').replace('\r','').replace('\t','')
+        dec=base64.b64decode(b64c)
+        SIG=bytes([0xc2,0xff,0xd2,0x0f])
+        if dec[0]==0xc2:
+            c=parse_single_geom(dec,0)
+            return [c] if len(c)>=2 else []
+        else:
+            pos,positions=0,[]
+            while True:
+                pos=dec.find(SIG,pos)
+                if pos==-1: break
+                positions.append(pos); pos+=1
+            res=[]
+            for k,st in enumerate(positions):
+                en=positions[k+1] if k+1<len(positions) else len(dec)
+                c=parse_single_geom(dec[st:en],0)
+                if len(c)>=2: res.append(c)
+            return res
+    except: return []
+
+def decode_point(b64):
+    try:
+        b64c=b64.replace(' ','').replace('\n','').replace('\r','').replace('\t','')
+        pad=len(b64c)%4
+        if pad: b64c+='='*(4-pad)
+        dec=base64.b64decode(b64c)
+        if len(dec)<32: return None
+        x=struct.unpack('<d',dec[16:24])[0]
+        y=struct.unpack('<d',dec[24:32])[0]
+        if abs(x)>20000000 or abs(y)>20000000: return None
+        lat,lon=proj_to_latlon(x,y)
+        if -90<lat<90 and -180<lon<180: return (lat,lon)
+    except: pass
+    return None
+
+line_names=set(); line_oss_names=set()
+rep_names=set(); eq_names=set()
+line_fail=0; line_oss_fail=0; pt_fail=0
+
+for txt in xml_texts['fibre']:
+    try:
+        root=ET.fromstring(txt)
+        for rec in list(root):
+            geom=rec.findtext('GDO_GEOMETRY','')
+            if not geom.strip() or not decode_line(geom):
+                line_fail+=1; continue
+            line_names.add(rec.findtext('SystemName','（名称なし）'))
+    except: pass
+
+for txt in xml_texts['fibre-oss']:
+    try:
+        root=ET.fromstring(txt)
+        for rec in list(root):
+            geom=rec.findtext('GDO_GEOMETRY','')
+            if not geom.strip() or not decode_line(geom):
+                line_oss_fail+=1; continue
+            line_oss_names.add(rec.findtext('SystemName','（名称なし）'))
+    except: pass
+
+for txt in xml_texts['rep']+xml_texts['eq']:
+    try:
+        root=ET.fromstring(txt)
+        for rec in list(root):
+            geom=rec.findtext('GDO_GEOMETRY','')
+            if not geom.strip(): pt_fail+=1; continue
+            res=decode_point(geom)
+            if res is None: pt_fail+=1; continue
+            sn=rec.findtext('SystemName','（名称なし）')
+            ft=rec.findtext('Feat_type','Repeater')
+            if 'equaliser' in ft.lower(): eq_names.add(sn)
+            else: rep_names.add(sn)
+    except: pass
+
+all_names=sorted(line_names | line_oss_names | rep_names | eq_names)
+subtotal=len(line_names)+len(line_oss_names)+len(rep_names)+len(eq_names)
+duplicates=subtotal-len(all_names)
+
+json.dumps({
+    'line_names': list(line_names),
+    'line_oss_names': list(line_oss_names),
+    'rep_names': list(rep_names),
+    'eq_names': list(eq_names),
+    'all_names': all_names,
+    'line_fail': line_fail,
+    'line_oss_fail': line_oss_fail,
+    'pt_fail': pt_fail,
+    'subtotal': subtotal,
+    'duplicates': duplicates,
+})
+  `);
+
+  const data = JSON.parse(result);
+  lineNames    = new Set(data.line_names);
+  lineOssNames = new Set(data.line_oss_names);
+  repNames     = new Set(data.rep_names);
+  eqNames      = new Set(data.eq_names);
+  allNames     = data.all_names;
+
+  log('─── 読み込み結果 ───');
+  log(`Cable      : 解析成功 ${String(data.line_names.length).padStart(4)}件 / 失敗 ${String(data.line_fail).padStart(4)}件（GDO_GEOMETRY空または解析不可）`);
+  log(`Cable(OSS) : 解析成功 ${String(data.line_oss_names.length).padStart(4)}件 / 失敗 ${String(data.line_oss_fail).padStart(4)}件`);
+  log(`Repeater   : 解析成功 ${String(data.rep_names.length).padStart(4)}件 / 失敗 ${String(data.pt_fail).padStart(4)}件`);
+  log(`Equaliser  : 解析成功 ${String(data.eq_names.length).padStart(4)}件 / 失敗 ${String(data.pt_fail).padStart(4)}件`);
   log('─── System Name集計 ───');
-  log(`Cable      : ${String(lineNames.size).padStart(4)} System`);
-  log(`Cable(OSS) : ${String(lineOssNames.size).padStart(4)} System`);
-  log(`Repeater   : ${String(repNames.size).padStart(4)} System`);
-  log(`Equaliser  : ${String(eqNames.size).padStart(4)} System`);
-  log(`小計（延べ）: ${subtotal}件`);
-  log(`うち複数種別に存在するSystem: ${duplicates}件`);
+  log(`Cable      : ${String(data.line_names.length).padStart(4)} System`);
+  log(`Cable(OSS) : ${String(data.line_oss_names.length).padStart(4)} System`);
+  log(`Repeater   : ${String(data.rep_names.length).padStart(4)} System`);
+  log(`Equaliser  : ${String(data.eq_names.length).padStart(4)} System`);
+  log(`小計（延べ）: ${data.subtotal}件`);
+  log(`うち複数種別に存在するSystem: ${data.duplicates}件`);
   log(`重複排除後: ${allNames.length}件`);
   log('─'.repeat(40));
   log(`System Name合計: ${allNames.length}件`);
