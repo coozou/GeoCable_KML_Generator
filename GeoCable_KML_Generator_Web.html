@@ -480,7 +480,7 @@
     <div class="section-header">━ 出力設定 ━</div>
     <div class="output-row">
       <span class="output-label">KMLファイル名</span>
-      <input type="text" class="output-input" id="out-name" placeholder="GeoCable_KML_Generator_Web">
+      <input type="text" class="output-input" id="out-name" value="GeoCable_KML_Generator_Web" style="color:grey" onfocus="this.style.color='black';this.setSelectionRange(this.value.length,this.value.length);" onblur="if(!this.value.trim()){this.value='GeoCable_KML_Generator_Web';this.style.color='grey';}">
     </div>
     <div class="output-note">（拡張子不要）</div>
 
