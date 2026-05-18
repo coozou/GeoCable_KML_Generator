@@ -694,8 +694,10 @@ async function loadXML() {
   }
 
   allNames.sort();
-  log(`ライン: ${lineNames.size}システム  ライン(OSS): ${lineOssNames.size}システム  ポイント: ${repNames.size+eqNames.size}システム`);
-  log(`SystemName: ${allNames.length}件`);
+  const totalRaw = lineNames.size + lineOssNames.size + repNames.size + eqNames.size;
+  const duplicates = totalRaw - allNames.length;
+  log(`ライン: ${lineNames.size}  ライン(OSS): ${lineOssNames.size}  Repeater: ${repNames.size}  Equaliser: ${eqNames.size}  合計: ${totalRaw}`);
+  log(`重複排除（複数種別に存在するSystem）: ${duplicates}件 → SystemName: ${allNames.length}件`);
   log('読み込み完了');
   hideProgress('load');
   renderList();
