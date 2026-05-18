@@ -738,11 +738,11 @@ async function generateKML() {
     }
   }
 
-  pyodide.globals.set('xml_texts', pyodide.toPy(xmlTexts));
-  pyodide.globals.set('selected_names', pyodide.toPy(selected));
+  pyodide.globals.set('xml_texts_json', JSON.stringify(xmlTexts));
+  pyodide.globals.set('selected_names_json', JSON.stringify(selected));
   pyodide.globals.set('folder_mode', folderMode);
   pyodide.globals.set('doc_name', outName);
-  pyodide.globals.set('style_cfg', pyodide.toPy({
+  pyodide.globals.set('style_cfg_json', JSON.stringify({
     line_color: lineColor, line_width: lineWidth,
     oss_color:  ossColor,  oss_width:  ossWidth,
     rep_color:  repColor,  rep_size:   repSize,   rep_icon: repIcon,
@@ -750,8 +750,12 @@ async function generateKML() {
   }));
 
   const kmlContent = await pyodide.runPythonAsync(`
-import base64, struct, math, xml.etree.ElementTree as ET
+import base64, struct, math, xml.etree.ElementTree as ET, json
 from collections import OrderedDict
+
+xml_texts = json.loads(xml_texts_json)
+selected_names = json.loads(selected_names_json)
+sc = json.loads(style_cfg_json)
 
 _a=6378137.0; _e2=0.00669437999014; _e=math.sqrt(_e2)
 _k=0.839504511565919; _lat0r=math.radians(33.0); _lon0=80.0
@@ -879,7 +883,6 @@ for rec in load_records(xml_texts['rep'],'rep')+load_records(xml_texts['eq'],'eq
         'feat_type':ft,'issue':rec.findtext('Issue',''),
         'id1':rec.findtext('ID1',''),'lat':lat,'lon':lon})
 
-sc=style_cfg.to_py()
 lc=sc['line_color']; lw=sc['line_width']
 oc=sc['oss_color'];  ow=sc['oss_width']
 rc=sc['rep_color'];  rs=sc['rep_size']; ri=sc['rep_icon']
@@ -894,7 +897,7 @@ styles=f'''  <Style id="lineStyle"><LineStyle><color>{lc}</color><width>{lw}</wi
     <IconStyle><color>{ec}</color><scale>{es}</scale><Icon><href>{ei}</href></Icon></IconStyle>
     <LabelStyle><scale>0.0</scale></LabelStyle></Style>'''
 
-names=list(selected_names.to_py())
+names=list(selected_names)
 fm=str(folder_mode)
 
 def make_line_pm(sys_name, d, style_id, suffix=''):
