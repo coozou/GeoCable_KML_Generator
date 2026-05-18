@@ -741,7 +741,8 @@ async function generateKML() {
   const eqIcon    = `http://maps.google.com/mapfiles/kml/shapes/${document.getElementById('icon-eq').value}.png`;
 
   const selected = [...selectedNames];
-  showProgress('gen', 0, selected.length);
+  showProgress('gen', selected.length, selected.length);
+  document.getElementById('prog-gen-text').textContent = 'KML生成中... しばらくお待ちください';
   log('─── KML生成中 ───');
 
   // Pyodideで処理
