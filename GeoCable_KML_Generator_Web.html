@@ -694,10 +694,18 @@ async function loadXML() {
   }
 
   allNames.sort();
-  const totalRaw = lineNames.size + lineOssNames.size + repNames.size + eqNames.size;
-  const duplicates = totalRaw - allNames.length;
-  log(`ライン: ${lineNames.size}  ライン(OSS): ${lineOssNames.size}  Repeater: ${repNames.size}  Equaliser: ${eqNames.size}  合計: ${totalRaw}`);
-  log(`重複排除（複数種別に存在するSystem）: ${duplicates}件 → SystemName: ${allNames.length}件`);
+  const subtotal = lineNames.size + lineOssNames.size + repNames.size + eqNames.size;
+  const duplicates = subtotal - allNames.length;
+  log('─── System Name集計 ───');
+  log(`Cable      : ${String(lineNames.size).padStart(4)} System`);
+  log(`Cable(OSS) : ${String(lineOssNames.size).padStart(4)} System`);
+  log(`Repeater   : ${String(repNames.size).padStart(4)} System`);
+  log(`Equaliser  : ${String(eqNames.size).padStart(4)} System`);
+  log(`小計（延べ）: ${subtotal}件`);
+  log(`うち複数種別に存在するSystem: ${duplicates}件`);
+  log(`重複排除後: ${allNames.length}件`);
+  log('─'.repeat(40));
+  log(`System Name合計: ${allNames.length}件`);
   log('読み込み完了');
   hideProgress('load');
   renderList();
