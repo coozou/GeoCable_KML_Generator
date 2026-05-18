@@ -675,7 +675,8 @@ async function loadXML() {
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/xml');
     const records = doc.querySelectorAll(':root > *');
-    log(`[${kind}] ${file.name} → ${records.length}件`);
+    const kindLabel = {fibre:'Fibre','fibre-oss':'Fibre(OSS)',rep:'Repeater',eq:'Equaliser'}[kind]||kind;
+    log(`[${kindLabel}] ${file.name} → ${records.length}件`);
 
     records.forEach(rec => {
       const name = rec.querySelector('SystemName')?.textContent?.trim() || '（名称なし）';
@@ -689,6 +690,7 @@ async function loadXML() {
   }
 
   allNames.sort();
+  log(`ライン: ${lineNames.size}システム  ライン(OSS): 0システム  ポイント: ${repNames.size+eqNames.size}システム`);
   log(`SystemName: ${allNames.length}件`);
   log('読み込み完了');
   hideProgress('load');
